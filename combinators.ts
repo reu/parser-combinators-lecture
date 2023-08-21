@@ -11,6 +11,15 @@ export const isError = <A>(res: A | ParseError): res is ParseError =>
 export const isParseError = <A>([res, _]: ReturnType<Parser<A>>) =>
   isError(res);
 
+export const parse = <A>(p: Parser<A>) => (input: string): A => {
+  const [res, _rest] = p(input);
+  if (isError(res)) {
+    throw new Error(res[errorSymbol]);
+  } else {
+    return res;
+  }
+};
+
 export const success = <A>(val: A): Parser<A> => (input) => [val, input];
 
 export const failure =
