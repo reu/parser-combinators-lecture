@@ -33,11 +33,14 @@ const number: Parser<Expression> = map(
   (value) => ({ type: "NUMBER", value }),
 );
 
-const binaryOperation = (operators: Array<Operator>): Parser<Expression> =>
+const binaryOperation = (
+  operators: Array<Operator>,
+  precedent: Parser<Expression>,
+): Parser<Expression> =>
   map(
     tuple(
-      number,
-      many0(tuple(any(operators.map(token)), number)),
+      precedent,
+      many0(tuple(any(operators.map(token)), precedent)),
     ),
     ([left, right]) =>
       right.reduce((left, [operator, right]) => ({
@@ -49,7 +52,8 @@ const binaryOperation = (operators: Array<Operator>): Parser<Expression> =>
   );
 
 const expression = any([
-  binaryOperation(["+", "-"]),
+  binaryOperation(["+", "-"], binaryOperation(["*", "/"], number)),
+  binaryOperation(["*", "/"], number),
   number,
 ]);
 
@@ -75,6 +79,13 @@ Deno.test(function testBinaryOperation() {
     right: { type: "NUMBER", value: 2 },
   }, ""]);
 
+  assertEquals(expression("1*2"), [{
+    type: "BINARY_OPERATION",
+    operator: "*",
+    left: { type: "NUMBER", value: 1 },
+    right: { type: "NUMBER", value: 2 },
+  }, ""]);
+
   assertEquals(expression("1+3-2"), [{
     type: "BINARY_OPERATION",
     operator: "-",
@@ -85,5 +96,17 @@ Deno.test(function testBinaryOperation() {
       right: { type: "NUMBER", value: 3 },
     },
     right: { type: "NUMBER", value: 2 },
+  }, ""]);
+
+  assertEquals(expression("1+3*2"), [{
+    type: "BINARY_OPERATION",
+    operator: "+",
+    left: { type: "NUMBER", value: 1 },
+    right: {
+      type: "BINARY_OPERATION",
+      operator: "*",
+      left: { type: "NUMBER", value: 3 },
+      right: { type: "NUMBER", value: 2 },
+    },
   }, ""]);
 });
