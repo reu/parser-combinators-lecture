@@ -100,7 +100,7 @@ export const all = <A>(ps: Array<Parser<A>>): Parser<Array<A>> => (input) => {
 export const many0 = <A>(p: Parser<A>): Parser<Array<A>> => (input) => {
   const [res, rest] = p(input);
   return isError(res)
-    ? [[], rest]
+    ? [[], input]
     : map(many0(p), (results) => [res, ...results])(rest);
 };
 
