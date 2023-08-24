@@ -2,6 +2,7 @@ import { assertEquals } from "https://deno.land/std@0.177.0/testing/asserts.ts";
 import {
   any,
   char,
+  delimited,
   int,
   many0,
   map,
@@ -32,6 +33,12 @@ const number: Parser<Expression> = map(
   ]),
   (value) => ({ type: "NUMBER", value }),
 );
+
+const operand: Parser<Expression> = (input) =>
+  any([
+    delimited(char("("), expression, char(")")),
+    number,
+  ])(input);
 
 const binaryOperation = (
   operators: Array<Operator>,
@@ -133,6 +140,23 @@ Deno.test(function testBinaryOperation() {
         left: { type: "NUMBER", value: 3 },
         right: { type: "NUMBER", value: 2 },
       },
+      right: { type: "NUMBER", value: 4 },
+    },
+  }, ""]);
+
+  assertEquals(expression("(1+3)**(2*4)"), [{
+    type: "BINARY_OPERATION",
+    operator: "**",
+    left: {
+      type: "BINARY_OPERATION",
+      operator: "+",
+      left: { type: "NUMBER", value: 1 },
+      right: { type: "NUMBER", value: 3 },
+    },
+    right: {
+      type: "BINARY_OPERATION",
+      operator: "*",
+      left: { type: "NUMBER", value: 2 },
       right: { type: "NUMBER", value: 4 },
     },
   }, ""]);
