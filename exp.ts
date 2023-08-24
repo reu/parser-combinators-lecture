@@ -65,7 +65,45 @@ const binaryOperation = (
       }), left),
   );
 
-const exponentiation = binaryOperation(["**", "^"], operand);
+const rightAssociativeOperation = (
+  operators: Array<Operator>,
+  precedent: Parser<Expression>,
+): Parser<Expression> =>
+  map(
+    tuple(
+      precedent,
+      many0(tuple(any(operators.map(token)), precedent)),
+    ),
+    ([left, rights]) => {
+      if (rights.length > 1) {
+        const [first, ...rest] = rights;
+        const [operator, firstRight] = first;
+        return {
+          type: "BINARY_OPERATION",
+          operator: operator as Operator,
+          left,
+          right: rest.reduce((left, [operator, right]) => ({
+            type: "BINARY_OPERATION",
+            operator: operator as Operator,
+            left,
+            right,
+          }), firstRight),
+        };
+      } else if (rights.length == 1) {
+        const [operator, right] = rights[0];
+        return {
+          type: "BINARY_OPERATION",
+          operator: operator as Operator,
+          left,
+          right,
+        };
+      } else {
+        return left;
+      }
+    },
+  );
+
+const exponentiation = rightAssociativeOperation(["**", "^"], operand);
 const multiplication = binaryOperation(["*", "/"], exponentiation);
 const addition = binaryOperation(["+", "-"], multiplication);
 
@@ -190,6 +228,27 @@ Deno.test(function testBinaryOperation() {
       type: "BINARY_OPERATION",
       operator: "*",
       left: { type: "NUMBER", value: 2 },
+      right: { type: "NUMBER", value: 4 },
+    },
+  }, ""]);
+});
+
+Deno.test(function testExponentiationRightAssociative() {
+  assertEquals(expression("2**3"), [{
+    type: "BINARY_OPERATION",
+    operator: "**",
+    left: { type: "NUMBER", value: 2 },
+    right: { type: "NUMBER", value: 3 },
+  }, ""]);
+
+  assertEquals(expression("2**3**4"), [{
+    type: "BINARY_OPERATION",
+    operator: "**",
+    left: { type: "NUMBER", value: 2 },
+    right: {
+      type: "BINARY_OPERATION",
+      operator: "**",
+      left: { type: "NUMBER", value: 3 },
       right: { type: "NUMBER", value: 4 },
     },
   }, ""]);
