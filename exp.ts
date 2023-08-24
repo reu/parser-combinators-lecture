@@ -5,7 +5,9 @@ import {
   char,
   concat,
   delimited,
+  digit,
   int,
+  letter,
   many0,
   many1,
   map,
@@ -27,7 +29,8 @@ type Expression =
     left: Expression;
     right: Expression;
   }
-  | { type: "FUNCTION"; name: string; args: Expression[] };
+  | { type: "FUNCTION"; name: string; args: Expression[] }
+  | { type: "REFERENCE"; address: string };
 
 const number: Parser<Expression> = map(
   any([
@@ -81,9 +84,15 @@ const functionCall: Parser<Expression> = (input) => {
   return exp(input);
 };
 
+const reference: Parser<Expression> = map(
+  tuple(concat(many1(letter)), concat(many1(digit))),
+  ([letter, digits]) => ({ type: "REFERENCE", address: `${letter}${digits}` }),
+);
+
 const expression = any([
   addition,
   functionCall,
+  reference,
   number,
 ]);
 
@@ -92,6 +101,10 @@ Deno.test(function testNumber() {
   assertEquals(expression("-1"), [{ type: "NUMBER", value: -1 }, ""]);
   assertEquals(expression("1.5"), [{ type: "NUMBER", value: 1.5 }, ""]);
   assertEquals(expression("-1.5"), [{ type: "NUMBER", value: -1.5 }, ""]);
+});
+
+Deno.test(function testReference() {
+  assertEquals(expression("A1"), [{ type: "REFERENCE", address: "A1" }, ""]);
 });
 
 Deno.test(function testBinaryOperation() {
