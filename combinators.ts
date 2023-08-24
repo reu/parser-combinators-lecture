@@ -161,6 +161,8 @@ export const letter: Parser<string> = satisfy((c) => /[A-Za-z]/.test(c));
 
 export const digit: Parser<string> = satisfy((c) => /[0-9]/.test(c));
 
+export const alpha: Parser<string> = any([letter, digit]);
+
 export const nat: Parser<number> = map(
   many1(digit),
   (digits) =>

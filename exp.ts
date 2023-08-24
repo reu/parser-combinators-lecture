@@ -1,13 +1,17 @@
 import { assertEquals } from "https://deno.land/std@0.177.0/testing/asserts.ts";
 import {
+  alpha,
   any,
   char,
+  concat,
   delimited,
   int,
   many0,
+  many1,
   map,
   nat,
   Parser,
+  separated0,
   token,
   tuple,
   tuple3,
@@ -62,8 +66,24 @@ const exponentiation = binaryOperation(["**", "^"], operand);
 const multiplication = binaryOperation(["*", "/"], exponentiation);
 const addition = binaryOperation(["+", "-"], multiplication);
 
+const functionCall: Parser<Expression> = (input) => {
+  const exp: Parser<Expression> = map(
+    tuple(
+      concat(many1(alpha)),
+      delimited(
+        char("("),
+        separated0(char(","), expression),
+        char(")"),
+      ),
+    ),
+    ([name, args]) => ({ type: "FUNCTION", name, args }),
+  );
+  return exp(input);
+};
+
 const expression = any([
   addition,
+  functionCall,
   number,
 ]);
 
@@ -159,5 +179,46 @@ Deno.test(function testBinaryOperation() {
       left: { type: "NUMBER", value: 2 },
       right: { type: "NUMBER", value: 4 },
     },
+  }, ""]);
+});
+
+Deno.test(function testFunction() {
+  assertEquals(expression("SUM(1,2)"), [{
+    type: "FUNCTION",
+    name: "SUM",
+    args: [
+      { type: "NUMBER", value: 1 },
+      { type: "NUMBER", value: 2 },
+    ],
+  }, ""]);
+
+  assertEquals(expression("NOW()"), [{
+    type: "FUNCTION",
+    name: "NOW",
+    args: [],
+  }, ""]);
+
+  assertEquals(expression("SUM(1+2,(2+3)*4)"), [{
+    type: "FUNCTION",
+    name: "SUM",
+    args: [
+      {
+        type: "BINARY_OPERATION",
+        operator: "+",
+        left: { type: "NUMBER", value: 1 },
+        right: { type: "NUMBER", value: 2 },
+      },
+      {
+        type: "BINARY_OPERATION",
+        operator: "*",
+        left: {
+          type: "BINARY_OPERATION",
+          operator: "+",
+          left: { type: "NUMBER", value: 2 },
+          right: { type: "NUMBER", value: 3 },
+        },
+        right: { type: "NUMBER", value: 4 },
+      },
+    ],
   }, ""]);
 });
