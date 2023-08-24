@@ -12,6 +12,7 @@ import {
   many1,
   map,
   nat,
+  parse,
   Parser,
   separated0,
   token,
@@ -133,6 +134,38 @@ const expression = any([
   reference,
   number,
 ]);
+
+const evaluate = parse(
+  map(expression, function evaluate(exp: Expression): number {
+    switch (exp.type) {
+      case "NUMBER":
+        return exp.value;
+      case "REFERENCE":
+      case "FUNCTION":
+        return 0;
+      case "BINARY_OPERATION": {
+        switch (exp.operator) {
+          case "+":
+            return evaluate(exp.left) + evaluate(exp.right);
+          case "-":
+            return evaluate(exp.left) - evaluate(exp.right);
+          case "*":
+            return evaluate(exp.left) * evaluate(exp.right);
+          case "/":
+            return evaluate(exp.left) / evaluate(exp.right);
+          case "**":
+          case "^":
+            return evaluate(exp.left) ** evaluate(exp.right);
+        }
+      }
+    }
+  }),
+);
+
+Deno.test(function evaluateTest() {
+  assertEquals(evaluate("2*3+4"), 10);
+  assertEquals(evaluate("2^2^3"), 256);
+});
 
 Deno.test(function testNumber() {
   assertEquals(expression("1"), [{ type: "NUMBER", value: 1 }, ""]);
