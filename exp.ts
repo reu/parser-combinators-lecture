@@ -45,6 +45,8 @@ const number: Parser<Expression> = map(
 const operand: Parser<Expression> = (input) =>
   any([
     delimited(char("("), expression, char(")")),
+    reference,
+    functionCall,
     number,
   ])(input);
 
@@ -130,9 +132,7 @@ const reference: Parser<Expression> = map(
 
 const expression = any([
   addition,
-  functionCall,
-  reference,
-  number,
+  operand,
 ]);
 
 const evaluate = parse(
@@ -162,9 +162,30 @@ const evaluate = parse(
   }),
 );
 
+const references = parse(
+  map(expression, function evaluate(exp: Expression): Array<string> {
+    switch (exp.type) {
+      case "REFERENCE":
+        return [exp.address];
+      case "FUNCTION":
+        return exp.args.flatMap(evaluate);
+      case "BINARY_OPERATION":
+        return [...evaluate(exp.left), ...evaluate(exp.right)];
+      default:
+        return [];
+    }
+  }),
+);
+
 Deno.test(function evaluateTest() {
   assertEquals(evaluate("2*3+4"), 10);
   assertEquals(evaluate("2^2^3"), 256);
+});
+
+Deno.test(function referencesTest() {
+  assertEquals(references("2*3+4"), []);
+  assertEquals(references("A1+10+B2"), ["A1", "B2"]);
+  assertEquals(references("A1+SUM(2,A2,A3)"), ["A1", "A2", "A3"]);
 });
 
 Deno.test(function testNumber() {
